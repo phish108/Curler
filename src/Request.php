@@ -27,6 +27,12 @@ class Request {
     private $outputHeaderHandler = [];
     private $inputHeaderHandler = [];
 
+    private $dataMapper = [
+        "application/json" => "\\Curler\\Data\\JSON",
+        "application/x-www-form-urlencoded" => "\\Curler\\Data\\Form",
+        "text/plain" => "\\Curler\\Data"
+    ];
+
     public function __construct($options="") {
         if (empty($options)) {
                 $options = [];
@@ -256,6 +262,11 @@ class Request {
         $this->prepareRequest();
         $this->prepareOutHeader($type);
 
+        if (array_key_exists($type, $this->dataMapper)) {
+            $classname = $this->dataMapper[$type];
+            $data = $classname::process($data);
+        }
+
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
         $this->request();
@@ -267,6 +278,11 @@ class Request {
         $this->prepareRequest();
         $this->prepareOutHeader($type);
 
+        if (array_key_exists($type, $this->dataMapper)) {
+            $classname = $this->dataMapper[$type];
+            $data = $classname::process($data);
+        }
+
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
         $this->request();
@@ -277,6 +293,11 @@ class Request {
         $this->prepareUri();
         $this->prepareRequest();
         $this->prepareOutHeader($type);
+
+        if (array_key_exists($type, $this->dataMapper)) {
+            $classname = $this->dataMapper[$type];
+            $data = $classname::process($data);
+        }
 
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
