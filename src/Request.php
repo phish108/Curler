@@ -30,7 +30,8 @@ class Request {
     private $dataMapper = [
         "application/json" => "\\Curler\\Data\\JSON",
         "application/x-www-form-urlencoded" => "\\Curler\\Data\\Form",
-        "text/plain" => "\\Curler\\Data"
+        "text/plain" => "\\Curler\\Data",
+        "text/yaml"  => "\\Curler\\Data\\YAML"
     ];
 
     public function __construct($options="") {
