@@ -127,7 +127,9 @@ class Request {
     private function prepareUri($data="") {
         $this->path_info = ltrim($this->path_info, "/");
         $this->next_url  = $this->protocol . "://" . $this->host . $this->base_url;
+
         if (!empty($this->path_info)) {
+            $this->next_url = ltrim($this->next_url, "/");
             $this->next_url .= "/" . $this->path_info;
         }
 
