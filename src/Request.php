@@ -28,6 +28,8 @@ class Request {
     private $outputHeaderHandler = [];
     private $inputHeaderHandler = [];
 
+    private $basicCredentials;
+
     private $dataMapper = [
         "application/json" => "\\Curler\\Data\\JSON",
         "application/x-www-form-urlencoded" => "\\Curler\\Data\\Form",
@@ -124,6 +126,11 @@ class Request {
                     break;
             }
         }
+    }
+
+    public function setCredentials($username, $password) {
+        $this->basicCredentials = [];
+        $this->basicCredentials[$username] = $password;
     }
 
     private function prepareUri($data="") {
@@ -250,6 +257,17 @@ class Request {
 
         curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($c, CURLOPT_CUSTOMREQUEST, $this->next_method );
+
+
+        $pwd = "";
+        if ($this->basicCredentials) {
+            foreach ($this->basicCredentials as $u => $p) {
+                $pwd = "$u:$p";
+            }
+        }
+        if (!empty($pwd)) {
+            curl_setopt($c, CURL_USERPWD, $pwd);
+        }
 
         $this->curl = $c;
     }
