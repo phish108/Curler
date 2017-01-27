@@ -9,6 +9,7 @@ class Request {
     private $protocol;
     private $host;
     private $base_url;
+    private $port;
     private $path_info;
     private $verifySSL = 1;
 
@@ -60,6 +61,7 @@ class Request {
             $this->host       = array_key_exists("host", $options)      ? $options["host"]      : "";
             $this->base_url   = array_key_exists("path", $options)      ? $options["path"]      : "";
             $this->path_info  = array_key_exists("path_info", $options) ? $options["path_info"] : "";
+            $this->port       = array_key_exists("port", $options)      ? $options["port"]      : "";
         }
     }
 
@@ -126,7 +128,11 @@ class Request {
 
     private function prepareUri($data="") {
         $this->path_info = ltrim($this->path_info, "/");
-        $this->next_url  = $this->protocol . "://" . $this->host . $this->base_url;
+        $this->next_url  = $this->protocol . "://" . $this->host;
+        if (!empty($this->port)) {
+            $this->next_url .= ":".$this->port;
+        }
+        $this->next_url .= $this->base_url;
 
         if (!empty($this->path_info)) {
             $this->next_url = rtrim($this->next_url, "/");
