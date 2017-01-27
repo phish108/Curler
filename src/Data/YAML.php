@@ -1,6 +1,6 @@
 <?php
 
-namespace Curler;
+namespace Curler\Data;
 
 class YAML extends \Curler\Data {
     static public function process($data) {
