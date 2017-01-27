@@ -266,7 +266,7 @@ class Request {
             }
         }
         if (!empty($pwd)) {
-            curl_setopt($c, CURL_USERPWD, $pwd);
+            curl_setopt($c, CURLOPT_USERPWD, $pwd);
         }
 
         $this->curl = $c;
