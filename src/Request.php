@@ -29,6 +29,7 @@ class Request {
     private $inputHeaderHandler = [];
 
     private $basicCredentials;
+    private $handlerCalled = false;
 
     private $dataMapper = [
         "application/json" => "\\Curler\\Data\\JSON",
@@ -198,6 +199,7 @@ class Request {
 
     private function request() {
         $this->in_header = [];
+        $this->handlerCalled = false;
 
         curl_setopt($this->curl, CURLOPT_HEADERFUNCTION, [$this, "__CallBackInHeader"]);
 
@@ -373,6 +375,46 @@ class Request {
     public function getUrl() {
         $this->prepareUri();
         return $this->next_url;
+    }
+
+    public function success($callback) {
+        if (isset($callback) && !$this->handlerCalled) {
+            if ($this->status == 200 || $this->status == 204) {
+                $this->handlerCalled = true;
+                call_user_func($callback, $this);
+            }
+        }
+        return $this;
+    }
+
+    public function failed($callback) {
+        if (isset($callback) && !$this->handlerCalled) {
+            if (!($this->status == 200 || $this->status == 204)) {
+                $this->handlerCalled = true;
+                call_user_func($callback, $this);
+            }
+        }
+        return $this;
+    }
+
+    public function notFound($callback) {
+        if (isset($callback) && !$this->handlerCalled) {
+            if ($this->status == 404) {
+                $this->handlerCalled = true;
+                call_user_func($callback, $this);
+            }
+        }
+        return $this;
+    }
+
+    public function notAuthorized($callback) {
+        if (isset($callback) && !$this->handlerCalled) {
+            if ($this->status == 401 || $this->status == 403) {
+                $this->handlerCalled = true;
+                call_user_func($callback, $this);
+            }
+        }
+        return $this;
     }
 }
 ?>
