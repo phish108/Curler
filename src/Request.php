@@ -215,6 +215,7 @@ class Request {
         $this->status = curl_getinfo($this->curl, CURLINFO_RESPONSE_CODE);
 
         $this->body = $res;
+        return $this;
     }
 
     private function prepareQueryString($data) {
@@ -282,7 +283,7 @@ class Request {
         // curl_setopt($c, CURLOPT_HEADER, true);
         $this->prepareOutHeader();
 
-        $this->request();
+        return $this->request();
     }
 
     public function post($data, $type) {
@@ -298,7 +299,7 @@ class Request {
 
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
-        $this->request();
+        return $this->request();
     }
 
     public function put($data, $type) {
@@ -314,7 +315,7 @@ class Request {
 
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
-        $this->request();
+        return $this->request();
     }
 
     public function patch($data, $type) {
@@ -330,7 +331,7 @@ class Request {
 
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
-        $this->request();
+        return $this->request();
     }
 
     public function delete($data=""){
@@ -339,7 +340,7 @@ class Request {
         $this->prepareRequest();
         $this->prepareOutHeader();
 
-        $this->request();
+        return $this->request();
     }
 
     public function head($data=""){
@@ -348,7 +349,7 @@ class Request {
         $this->prepareRequest();
         $this->prepareOutHeader();
 
-        $this->request();
+        return $this->request();
     }
 
     public function options($data=""){
@@ -357,7 +358,7 @@ class Request {
         $this->prepareRequest();
         $this->prepareOutHeader();
 
-        $this->request();
+        return $this->request();
     }
 
     public function getStatus() {
