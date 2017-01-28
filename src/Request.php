@@ -197,7 +197,7 @@ class Request {
         return strlen($header_line);
     }
 
-    private function request() {
+    private function request($promise) {
         $this->in_header = [];
         $this->handlerCalled = false;
 
@@ -215,7 +215,17 @@ class Request {
         $this->status = curl_getinfo($this->curl, CURLINFO_RESPONSE_CODE);
 
         $this->body = $res;
-        return $this;
+
+        switch($this->status) {
+            case 200:
+            case 204:
+                $promise->resolve($this);
+                break;
+            default:
+                $promise->reject($this);
+                break;
+        }
+        return $promise;
     }
 
     private function prepareQueryString($data) {
@@ -273,23 +283,24 @@ class Request {
         }
 
         $this->curl = $c;
+        return new Promise();
     }
 
     public function get($data="") {
         $this->next_method = "GET";
         $this->prepareUri($data);
-        $this->prepareRequest();
+        $promise = $this->prepareRequest();
 
         // curl_setopt($c, CURLOPT_HEADER, true);
         $this->prepareOutHeader();
 
-        return $this->request();
+        return $this->request($promise);
     }
 
     public function post($data, $type) {
         $this->next_method = "POST";
         $this->prepareUri();
-        $this->prepareRequest();
+        $promise = $this->prepareRequest();
         $this->prepareOutHeader($type);
 
         if (array_key_exists($type, $this->dataMapper)) {
@@ -299,13 +310,13 @@ class Request {
 
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
-        return $this->request();
+        return $this->request($promise);
     }
 
     public function put($data, $type) {
         $this->next_method = "PUT";
         $this->prepareUri();
-        $this->prepareRequest();
+        $promise = $this->prepareRequest();
         $this->prepareOutHeader($type);
 
         if (array_key_exists($type, $this->dataMapper)) {
@@ -315,13 +326,13 @@ class Request {
 
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
-        return $this->request();
+        return $this->request($promise);
     }
 
     public function patch($data, $type) {
         $this->next_method = "PATCH";
         $this->prepareUri();
-        $this->prepareRequest();
+        $promise = $this->prepareRequest();
         $this->prepareOutHeader($type);
 
         if (array_key_exists($type, $this->dataMapper)) {
@@ -331,34 +342,34 @@ class Request {
 
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $data);
 
-        return $this->request();
+        return $this->request($promise);
     }
 
     public function delete($data=""){
         $this->next_method = "DELETE";
         $this->prepareUri($data);
-        $this->prepareRequest();
+        $promise = $this->prepareRequest();
         $this->prepareOutHeader();
 
-        return $this->request();
+        return $this->request($promise);
     }
 
     public function head($data=""){
         $this->next_method = "HEAD";
         $this->prepareUri($data);
-        $this->prepareRequest();
+        $promise = $this->prepareRequest();
         $this->prepareOutHeader();
 
-        return $this->request();
+        return $this->request($promise);
     }
 
     public function options($data=""){
         $this->next_method = "OPTIONS";
         $this->prepareUri($data);
-        $this->prepareRequest();
+        $promise = $this->prepareRequest();
         $this->prepareOutHeader();
 
-        return $this->request();
+        return $this->request($promise);
     }
 
     public function getStatus() {
@@ -376,49 +387,6 @@ class Request {
     public function getUrl() {
         $this->prepareUri();
         return $this->next_url;
-    }
-
-    public function success($callback) {
-        if ($this->status == 200 || $this->status == 204) {
-            $this->handleStatus($callback, "success");
-        }
-        return $this;
-    }
-
-    public function failed($callback) {
-        if (!($this->status == 200 || $this->status == 204)) {
-            $this->handleStatus($callback, "failed");
-        }
-        return $this;
-    }
-
-    public function notFound($callback) {
-        if ($this->status == 404) {
-            $this->handleStatus($callback, "notFound");
-        }
-        return $this;
-    }
-
-    public function notAuthorized($callback) {
-        if ($this->status == 401 || $this->status == 403) {
-            $this->handleStatus($callback, "notAuthorized");
-        }
-        return $this;
-    }
-
-    private function handleStatus($callback, $method) {
-        if (isset($callback) && !$this->handlerCalled) {
-            if (is_object($callback)) {
-                if (method_exists($callback, $method)) {
-                    $callback = [$callback, $method];
-                }
-                elseif (!is_callable($callback)) {
-                    return;
-                }
-            }
-            $this->handlerCalled = true;
-            call_user_func($callback, $this);
-        }
     }
 }
 ?>
