@@ -379,43 +379,46 @@ class Request {
     }
 
     public function success($callback) {
-        if (isset($callback) && !$this->handlerCalled) {
-            if ($this->status == 200 || $this->status == 204) {
-                $this->handlerCalled = true;
-                call_user_func($callback, $this);
-            }
+        if ($this->status == 200 || $this->status == 204) {
+            $this->handleStatus($callback, "success");
         }
         return $this;
     }
 
     public function failed($callback) {
-        if (isset($callback) && !$this->handlerCalled) {
-            if (!($this->status == 200 || $this->status == 204)) {
-                $this->handlerCalled = true;
-                call_user_func($callback, $this);
-            }
+        if (!($this->status == 200 || $this->status == 204)) {
+            $this->handleStatus($callback, "failed");
         }
         return $this;
     }
 
     public function notFound($callback) {
-        if (isset($callback) && !$this->handlerCalled) {
-            if ($this->status == 404) {
-                $this->handlerCalled = true;
-                call_user_func($callback, $this);
-            }
+        if ($this->status == 404) {
+            $this->handleStatus($callback, "notFound");
         }
         return $this;
     }
 
     public function notAuthorized($callback) {
-        if (isset($callback) && !$this->handlerCalled) {
-            if ($this->status == 401 || $this->status == 403) {
-                $this->handlerCalled = true;
-                call_user_func($callback, $this);
-            }
+        if ($this->status == 401 || $this->status == 403) {
+            $this->handleStatus($callback, "notAuthorized");
         }
         return $this;
+    }
+
+    private function handleStatus($callback, $method) {
+        if (isset($callback) && !$this->handlerCalled) {
+            if (is_object($callback)) {
+                if (method_exists($callback, $method)) {
+                    $callback = [$callback, $method];
+                }
+                else {
+                    return;
+                }
+            }
+            $this->handlerCalled = true;
+            call_user_func($callback, $this);
+        }
     }
 }
 ?>
