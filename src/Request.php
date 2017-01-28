@@ -412,7 +412,7 @@ class Request {
                 if (method_exists($callback, $method)) {
                     $callback = [$callback, $method];
                 }
-                else {
+                elseif (!is_callable($callback)) {
                     return;
                 }
             }
