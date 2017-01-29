@@ -2,6 +2,11 @@
 
 namespace Curler;
 
+/**
+ * Implmentation of Javascript Promises
+ * It also handles selected  HTTP status codes, so it allows
+ * Curler implementers to focus on handling specific errors.
+ */
 class Promise {
     private $completed = false;
     private $resolved = false;
@@ -18,6 +23,97 @@ class Promise {
         $reject  = function($res) use ($self) {$self->reject($res);};
 
         call_user_func($resolver, $resolve, $reject);
+    }
+
+    public function then($callback) {
+        if ($this->completed) {
+            if ($this->resolved) {
+                try {
+                    $this->lastResult = $this->fullfill($callback, "resolved", $this->lastResult);
+                }
+                catch (Exception $err) {
+                    $this->reject($err->getMessage());
+                }
+            }
+        }
+        else {
+            $this->ok[] = $callback;
+        }
+        return $this;
+    }
+
+    public function fails($callback) {
+        if ($this->completed) {
+            // if (!$this->resolved && $this->lastError) {
+            if (!$this->resolved && $this->lastError) {
+                try {
+                    $this->lastError = $this->fullfill($callback, "failed", $this->lastError);
+                }
+                catch (Exception $err) {
+                    $this->lastError = $err->getMessage();
+                }
+            }
+        }
+        else {
+            $this->error[] = $callback;
+        }
+        return $this;
+    }
+
+    public function forbidden($callback) {
+        return $this->addHandler($callback, "forbidden", [401, 403]);
+    }
+
+    public function created($callback) {
+        return $this->addHandler($callback, "created", 201);
+    }
+
+    public function authorizationRequired($callback) {
+        return $this->addHandler($callback, "authorizationRequired", 401);
+    }
+
+    public function paymentRequired($callback) {
+        return $this->addHandler($callback, "paymentRequired", 402);
+    }
+
+    public function unauthorized($callback) {
+        return $this->addHandler($callback, "unauthorized", 403);
+    }
+
+    public function notFound($callback) {
+        return $this->addHandler($callback, "notFound", 404);
+    }
+
+    public function notAllowed($callback) {
+        return $this->addHandler($callback, "notAllowed", 405);
+    }
+
+    public function notAcceptable($callback) {
+        return $this->addHandler($callback, "notAcceptable", 406);
+    }
+
+    public function conflict($callback) {
+        return $this->addHandler($callback, "conflict", 409);
+    }
+
+    public function gone($callback) {
+        return $this->addHandler($callback, "gone", 410);
+    }
+
+    public function tooManyRequests($callback) {
+        return $this->addHandler($callback, "tooManyRequests", 429);
+    }
+
+    public function internalError($callback) {
+        return $this->addHandler($callback, "internalError", 500);
+    }
+
+    public function notImplemented($callback) {
+        return $this->addHandler($callback, "notImplemented", 501);
+    }
+
+    public function unavailable($callback) {
+        return $this->addHandler($callback, "unavailable", 503);
     }
 
     private function resolve($result) {
@@ -71,61 +167,6 @@ class Promise {
         }
     }
 
-    public function then($callback) {
-        if ($this->completed) {
-            if ($this->resolved) {
-                try {
-                    $this->lastResult = $this->fullfill($callback, "resolved", $this->lastResult);
-                }
-                catch (Exception $err) {
-                    $this->reject($err->getMessage());
-                }
-            }
-        }
-        else {
-            $this->ok[] = $callback;
-        }
-        return $this;
-    }
-
-    public function fails($callback) {
-        if ($this->completed) {
-            // if (!$this->resolved && $this->lastError) {
-            if (!$this->resolved && $this->lastError) {
-                try {
-                    $this->lastError = $this->fullfill($callback, "failed", $this->lastError);
-                }
-                catch (Exception $err) {
-                    $this->lastError = $err->getMessage();
-                }
-            }
-        }
-        else {
-            $this->error[] = $callback;
-        }
-        return $this;
-    }
-
-    public function forbidden($callback) {
-        $self = $this;
-        return $this->fails(function ($err) use ($self,$callback) {
-            if ($err instanceof Request && ($err->getStatus() == 401 || $err->getStatus() == 403)) {
-                return $self->fullfill($callback, "forbidden", $err);
-            }
-            return $err;
-        });
-    }
-
-    public function notFound($callback) {
-        $self = $this;
-        return $this->fails(function ($err) use ($self,$callback) {
-            if ($err instanceof Request && $err->getStatus() == 404) {
-                return $self->fullfill($callback, "notFound", $err);
-            }
-            return $err;
-        });
-    }
-
     private function fullfill($callback, $method, $param) {
         if (isset($callback)) {
             if (is_object($callback)) {
@@ -138,6 +179,19 @@ class Promise {
             }
             return call_user_func($callback, $param);
         }
+    }
+
+    private function addHandler($callback, $method, $status) {
+        $self = $this;
+        return $this->fails(function ($err) use ($self,$callback, $method, $status) {
+            if ($err instanceof Request &&
+                ((is_array($status) &&
+                  in_array($err->getStatus(), $status)) ||
+                 $err->getStatus() == $status)) {
+                return $self->fullfill($callback, $method, $err);
+            }
+            return $err;
+        });
     }
 }
 
