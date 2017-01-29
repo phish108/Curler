@@ -34,6 +34,8 @@ class Request {
     private $reject;
     private $accept;
 
+    private $wantBody = false;
+
     private $dataMapper = [
         "application/json" => "\\Curler\\Data\\JSON",
         "application/x-www-form-urlencoded" => "\\Curler\\Data\\Form",
@@ -50,12 +52,27 @@ class Request {
         $this->out_header = [];
     }
 
-    public function debugConnection() {
+    /**
+ 	 * activate Curl Debugging
+	 */
+	public function debugConnection() {
         $this->debugMode = 1;
     }
 
-    public function setLocation($options) {
-        $this->setUrl($options);
+    /**
+ 	 * treat 204 (No Content) responses as errors.
+	 */
+	public function ignoreEmptyResponses() {
+        $this->wantBody = true;
+    }
+
+    /**
+ 	 * change the base URL for the next request.
+ 	 *
+ 	 * @param mixed $url
+	 */
+	public function setLocation($url) {
+        $this->setUrl($url);
     }
 
     public function setUrl($options) {
@@ -220,8 +237,12 @@ class Request {
         $this->body = $res;
 
         switch($this->status) {
-            case 200:
             case 204:
+                if ($this->wantBody) {
+                    call_user_func($this->reject, $this);
+                    break;
+                }
+            case 200:
                 call_user_func($this->accept, $this);
                 break;
             default:

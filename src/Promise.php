@@ -17,7 +17,18 @@ class Promise {
     private $ok = [];
     private $error = [];
 
-    public function __construct($resolver) {
+    /**
+ 	 * creates a new Promise
+     *
+     * a promise expects a resolver function. This function MUST accept
+     * two parameters: $resolve and $reject.
+     *
+     * NOTE: a resolver function can be any callable PHP object.
+ 	 *
+ 	 * @param callable $resolver
+ 	 * @return \Curler\Promise
+	 */
+	public function __construct($resolver) {
         $self = $this;
         $resolve = function($res) use ($self) {$self->resolve($res);};
         $reject  = function($res) use ($self) {$self->reject($res);};
@@ -25,7 +36,51 @@ class Promise {
         call_user_func($resolver, $resolve, $reject);
     }
 
-    public function then($callback) {
+    /**
+ 	 * then() handles the success full pipeline.
+     *
+     * the provided callback is expected to handle the result of the previous
+     * result callback. A callback is expected to return its result for the next
+     * result callback.
+     *
+     * In the context of Curler\Requests, the result handler of the first then()
+     * call is expected to work with a Request-instance. This will be commonly
+     * used for processing content. The following example illustrates this:
+     *
+     * ```php
+     * $curl = new \Curler\Request("http://example.com");
+     * $curl->get()
+     *      ->then(function($req) {
+     *          return json_decode($req->getBody(), true); // parse JSON into an array
+     *      })
+     *      ->then(function($body) {
+     *          if (array_key_exist("error", $body)
+     *              throw new Exception($body["error_message"]);
+     *          // ...
+     *      })
+     *      ->fails(function($err){
+     *          // all Exceptions from json_decode and the body handling end here
+     *          if ($err instanceof Exception)
+     *              echo "an error occured " . $err->getMessage();
+     *          if ($err instanceof Request)
+     *              echo "server error " . $err->getStatus();
+     *      });
+     * ```
+     *
+     * Note: all result handler will get called, even if no result has been
+     * returned.
+     *
+     * In the context of Curler\Request result handler are called for, both,
+     * 200 and 204 responses. This can be changed by calling
+     * $curl->ignoreEmptyResponses() prior to the request.
+     *
+     * Note: Any Error/Failure leaves the response handler pipeline. There is
+     * no way to return to it from the error/failure handling.
+     *
+ 	 * @param callable $callback
+ 	 * @return Curler\Promise
+	 */
+	public function then($callback) {
         if ($this->completed) {
             if ($this->resolved) {
                 try {
@@ -42,9 +97,28 @@ class Promise {
         return $this;
     }
 
-    public function fails($callback) {
+    /**
+ 	 * fails() accepts callbacks for error handling.
+     *
+     * In Javascript this function is called catch(), which is a reserved word
+     * for php.
+     *
+     * errors can be actually pretty much any thing that is thrown or returned
+     * from error handlers.
+     *
+     * NOTE, if an error handler does neither returns something nor throws a new
+     * Exception, then the promise assumes that the error handling is complete.
+     * Therefore, the order of the error handlers is significant, because an
+     * all catching handler will stop any other error handler to process.
+     *
+     * Tip: by not adding error handlers, it is possible to ignore all
+     * errors.
+ 	 *
+ 	 * @param callable $callback - your error handler
+ 	 * @return Curler\Promise
+	 */
+	public function fails($callback) {
         if ($this->completed) {
-            // if (!$this->resolved && $this->lastError) {
             if (!$this->resolved && $this->lastError) {
                 try {
                     $this->lastError = $this->fullfill($callback, "failed", $this->lastError);
@@ -60,12 +134,21 @@ class Promise {
         return $this;
     }
 
+    /**
+ 	 * alternative and more tailored error handling for HTTP responses.
+ 	 */
+
     public function forbidden($callback) {
         return $this->addHandler($callback, "forbidden", [401, 403]);
     }
 
     public function created($callback) {
         return $this->addHandler($callback, "created", 201);
+    }
+
+    // optional, if you ask curler to accept ONLY 200
+    public function noContent($callback) {
+        return $this->addHandler($callback, "noContent", 204);
     }
 
     public function authorizationRequired($callback) {
@@ -116,7 +199,12 @@ class Promise {
         return $this->addHandler($callback, "unavailable", 503);
     }
 
-    private function resolve($result) {
+    /**
+ 	 * handles a successful request.
+ 	 *
+ 	 * @param mixed $result - the result of the operation
+	 */
+	private function resolve($result) {
         if (!$this->completed) {
             $this->completed = true;
             reset($this->ok);
@@ -142,7 +230,12 @@ class Promise {
         }
     }
 
-    private function reject($error) {
+    /**
+ 	 * handles an error.
+ 	 *
+ 	 * @param mixed $error - the result of the operation
+	 */
+	private function reject($error) {
         if (!$this->completed) {
             $this->completed = true;
             reset($this->error);
