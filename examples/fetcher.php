@@ -22,8 +22,8 @@ foreach ($urls as $url) {
     // then work with the request.
     $req->get()                                                    // first perform the request using the HTTP method
         ->then(function($req) { echo "success\n"; })            // handle 200 and 204 responses
-        ->fails(function($req) { if ($req->getStatus() == 401 || $req->getStatus() == 403) echo "unauthorized\n"; }) // handle 401 and 403 responses
-        ->fails(function ($req) { if ($req->getStatus() == 404) echo "not found\n"; })        // handle 404 responses
+        ->forbidden(function($req) {echo "unauthorized\n";}) // handle 401 and 403 responses
+        ->notFound(function ($req) { echo "not found\n";})        // handle 404 responses
         ->fails(function($req) { echo "other error " . $req->getStatus() . "\n";}); // handle all other responses
 }
 
@@ -34,9 +34,10 @@ function call_url($url) {
     $req = new Request($url);
     $req->get()
         // if you need to pass some information back to your script , no problem.
-        ->then(function($req) { echo "success\n"; })            // handle 200 and 204 responses
-        ->fails(function($req) { if ($req->getStatus == 401 || $req->getStatus == 403) echo "unauthorized\n"; }) // handle 401 and 403 responses
-        ->fails(function ($req) { if ($req->getStatus == 404) echo "not found\n"; }) // handle 404 responses
+        ->then(function($req)  { echo "success\n"; return $req->getBody();})            // handle 200 and 204 responses
+        // ->then(function($body) { echo "BODY: " . $body . "\n";})                        // handle the body separately
+        ->forbidden(function($req) {  echo "unauthorized\n"; }) // handle 401 and 403 responses
+        ->notFound(function ($req) { echo "not found\n";}) // handle 404 responses
         ->fails(function($req) { echo "other error " . $req->getStatus() . "\n";}); // handle all other responses
 
     if ($result) {
@@ -44,16 +45,23 @@ function call_url($url) {
     }
 }
 
-
 call_url($urls[2]);
+call_url($urls[3]);
 
 class testHandler {
     public function resolved($req) {
-        echo "success\n";
-        echo $req->getBody() . "\n";
+        echo "C success\n";
+        // echo $req->getBody() . "\n";
     }
     public function failed($req) {
-        echo "other error " . $req->getStatus() . "\n";
+        echo "C other error " . $req->getStatus() . "\n";
+    }
+
+    public function forbidden($req) {
+        echo "C forbidden\n";
+    }
+    public function notFound($req) {
+        echo "C not found\n";
     }
 }
 
@@ -70,3 +78,16 @@ $req->setLocation($urls[0]);
 $req->get()
     ->then($h)
     ->fails($h);
+
+foreach ($urls as $url) {
+    echo "\n" . $url . "\n";
+    // change the location for the next request.
+    $req->setLocation($url);
+
+    // then work with the request.
+    $req->get()          // first perform the request using the HTTP method
+        ->then($h)            // handle 200 and 204 responses
+        ->forbidden($h) // handle 401 and 403 responses
+        ->notFound($h)        // handle 404 responses
+        ->fails($h); // handle all other responses
+}

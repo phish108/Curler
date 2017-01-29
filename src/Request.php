@@ -31,6 +31,9 @@ class Request {
     private $basicCredentials;
     private $handlerCalled = false;
 
+    private $reject;
+    private $accept;
+
     private $dataMapper = [
         "application/json" => "\\Curler\\Data\\JSON",
         "application/x-www-form-urlencoded" => "\\Curler\\Data\\Form",
@@ -219,10 +222,10 @@ class Request {
         switch($this->status) {
             case 200:
             case 204:
-                $promise->resolve($this);
+                call_user_func($this->accept, $this);
                 break;
             default:
-                $promise->reject($this);
+                call_user_func($this->reject, $this);
                 break;
         }
         return $promise;
@@ -283,7 +286,11 @@ class Request {
         }
 
         $this->curl = $c;
-        return new Promise();
+        $self = $this;
+        return new Promise(function ($resolve, $reject) use ($self) {
+            $self->accept = $resolve;
+            $self->reject = $reject;
+        });
     }
 
     public function get($data="") {

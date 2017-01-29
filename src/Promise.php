@@ -12,7 +12,15 @@ class Promise {
     private $ok = [];
     private $error = [];
 
-    public function resolve($result) {
+    public function __construct($resolver) {
+        $self = $this;
+        $resolve = function($res) use ($self) {$self->resolve($res);};
+        $reject  = function($res) use ($self) {$self->reject($res);};
+
+        call_user_func($resolver, $resolve, $reject);
+    }
+
+    private function resolve($result) {
         if (!$this->completed) {
             $this->completed = true;
             reset($this->ok);
@@ -24,23 +32,21 @@ class Promise {
         $this->lastResult = $result;
         $this->lastError = null;
 
-        foreach ($this->ok as $handler) {
+        if (!empty($this->ok)) {
             try {
-                $res = $this->fullfill(current($this->ok), "resolved", $this->lastResult);
+                $this->lastResult = $this->fullfill(current($this->ok), "resolved", $this->lastResult);
             }
             catch (Exception $err) {
                 $this->reject($err->getMessage());
+                $this->lastResult = null;
             }
-            if ($res) {
-                $this->lastResult = $res;
+            if (next($this->ok)) {
+                $this->resolve($this->lastResult);
             }
-        }
-        if (next($this->ok)) {
-            $this->resolve($this->lastResult);
         }
     }
 
-    public function reject($error) {
+    private function reject($error) {
         if (!$this->completed) {
             $this->completed = true;
             reset($this->error);
@@ -51,19 +57,17 @@ class Promise {
         $this->lastError = $error;
         $this->lastResult = null;
 
-        try {
-            $res = $this->fullfill(current($this->error), "failed", $this->lastError);
-        }
-        catch (Exception $err) {
-            $this->lastError = $err->getMessage();
-        }
+        if (!empty($this->error)) {
+            try {
+                $this->lastError = $this->fullfill(current($this->error), "failed", $this->lastError);
+            }
+            catch (Exception $err) {
+                $this->lastError = $err->getMessage();
+            }
 
-        if ($res) {
-            $this->lastError = $res;
-        }
-
-        if (next($this->error)) {
-            $this->reject($this->lastError);
+            if (next($this->error) && $this->lastError) {
+                $this->reject($this->lastError);
+            }
         }
     }
 
@@ -71,14 +75,10 @@ class Promise {
         if ($this->completed) {
             if ($this->resolved) {
                 try {
-                    $res = $this->fullfill($callback, "resolved", $this->lastResult);
+                    $this->lastResult = $this->fullfill($callback, "resolved", $this->lastResult);
                 }
                 catch (Exception $err) {
                     $this->reject($err->getMessage());
-                }
-
-                if ($res) {
-                    $this->lastResult = $res;
                 }
             }
         }
@@ -90,16 +90,13 @@ class Promise {
 
     public function fails($callback) {
         if ($this->completed) {
-            if (!$this->resolved) {
+            // if (!$this->resolved && $this->lastError) {
+            if (!$this->resolved && $this->lastError) {
                 try {
-                    $res = $this->fullfill($callback, "failed", $this->lastError);
+                    $this->lastError = $this->fullfill($callback, "failed", $this->lastError);
                 }
                 catch (Exception $err) {
                     $this->lastError = $err->getMessage();
-                }
-
-                if ($res) {
-                    $this->lastError = $res;
                 }
             }
         }
@@ -107,6 +104,26 @@ class Promise {
             $this->error[] = $callback;
         }
         return $this;
+    }
+
+    public function forbidden($callback) {
+        $self = $this;
+        return $this->fails(function ($err) use ($self,$callback) {
+            if ($err instanceof Request && ($err->getStatus() == 401 || $err->getStatus() == 403)) {
+                return $self->fullfill($callback, "forbidden", $err);
+            }
+            return $err;
+        });
+    }
+
+    public function notFound($callback) {
+        $self = $this;
+        return $this->fails(function ($err) use ($self,$callback) {
+            if ($err instanceof Request && $err->getStatus() == 404) {
+                return $self->fullfill($callback, "notFound", $err);
+            }
+            return $err;
+        });
     }
 
     private function fullfill($callback, $method, $param) {
@@ -117,7 +134,7 @@ class Promise {
                 }
             }
             if (!is_callable($callback)) {
-                return null;
+                throw new Exception("invalid callback");
             }
             return call_user_func($callback, $param);
         }
