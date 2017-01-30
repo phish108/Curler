@@ -28,226 +28,216 @@ class HandlerModel {
 class PromiseTest extends TestCase {
 
     public function testFailsImmediately() {
-        $self = $this;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f){
             throw new Exception("fails immediately");
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertTrue(false, "must no reach then.");
+        $p->then(function ($r){
+            $this->assertTrue(false, "must no reach then.");
         });
-        $p->fails(function ($err) use ($self, &$final) {
-            $self->assertTrue($err instanceof Exception, "received no Exception");
-            $self->assertEquals($err->getMessage(), "fails immediately", "received wrong message");
-            $final = true;
+        $p->fails(function ($err) {
+            $this->assertTrue($err instanceof Exception, "received no Exception");
+            $this->assertEquals($err->getMessage(), "fails immediately", "received wrong message");
+            $this->final = true;
         });
-        $this->assertTrue($final, "fails immediately final");
+        $this->assertTrue($this->final, "fails immediately final");
     }
 
     public function testFailsImmediatelyRegular() {
-        $self = $this;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f){
             call_user_func($f, new Exception("fails immediately"));
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertTrue(false, "must no reach then()");
+        $p->then(function ($r) {
+            $this->assertTrue(false, "must no reach then()");
         });
-        $p->fails(function($err) use ($self, &$final) {
-            $self->assertTrue($err instanceof Exception, "received no Exception");
-            $self->assertEquals("fails immediately", $err->getMessage(), "received wrong message");
-            $final = true;
+        $p->fails(function($err)  {
+            $this->assertTrue($err instanceof Exception, "received no Exception");
+            $this->assertEquals("fails immediately", $err->getMessage(), "received wrong message");
+            $this->final = true;
         });
-        $this->assertTrue($final, "fails regular final");
+        $this->assertTrue($this->final, "fails regular final");
     }
 
     public function testFailsLate() {
-        $self = $this;
         $reject;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f) use (&$reject){
             $reject = $f;
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertTrue(false, "must no reach then()");
+        $p->then(function ($r){
+            $this->assertTrue(false, "must no reach then()");
         });
-        $p->fails(function($err) use ($self, &$final) {
-            $self->assertTrue($err instanceof Exception,"received no Exception");
-            $self->assertEquals("fails late", $err->getMessage(), "received wrong message");
-            $final = true;
+        $p->fails(function($err) {
+            $this->assertTrue($err instanceof Exception,"received no Exception");
+            $this->assertEquals("fails late", $err->getMessage(), "received wrong message");
+            $this->final = true;
         });
 
         $this->assertTrue(is_callable($reject), "not callable");
 
         call_user_func($reject, new Exception("fails late"));
-        $this->assertTrue($final, "fails late final");
+        $this->assertTrue($this->final, "fails late final");
     }
 
     public function testFailChain() {
-        $self = $this;
         $reject;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f) use (&$reject){
             $reject = $f;
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertTrue(false, "must no reach then()");
+        $p->then(function ($r)  {
+            $this->assertTrue(false, "must no reach then()");
         });
-        $p->fails(function($err) use ($self){
-            $self->assertTrue($err instanceof Exception, "received no Exception");
-            $self->assertEquals("fails late", $err->getMessage(), "received wrong message");
+        $p->fails(function($err) {
+            $this->assertTrue($err instanceof Exception, "received no Exception");
+            $this->assertEquals("fails late", $err->getMessage(), "received wrong message");
             return new Exception("fails badly");
         });
-        $p->fails(function($err) use ($self, &$final) {
-            $self->assertTrue($err instanceof Exception, "received no Exception");
-            $self->assertEquals("fails badly", $err->getMessage(), "received wrong message");
-            $final = true;
+        $p->fails(function($err) {
+            $this->assertTrue($err instanceof Exception, "received no Exception");
+            $this->assertEquals("fails badly", $err->getMessage(), "received wrong message");
+            $this->final = true;
         });
-        $p->fails(function($err) use ($self, &$final) {
+        $p->fails(function($err) {
             // MUST NOT REACH
             error_log("MUST NOT REACH LAST HANDLER $err");
-            $self->assertTrue(false, "MUST NOT REACH LAST HANDLER");
-            $final = false;
+            $this->assertTrue(false, "MUST NOT REACH LAST HANDLER");
+            $this->final = false;
         });
 
         call_user_func($reject, new Exception("fails late"));
-        $this->assertTrue($final, "fail chain final");
+        $this->assertTrue($this->final, "fail chain final");
     }
 
     public function testResolveImmediately() {
-        $self = $this;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f){
             call_user_func($s, "success");
         });
-        $p->then(function ($r) use ($self, &$final) {
-            $self->assertEquals("success", $r);
-            $final = true;
+        $p->then(function ($r) {
+            $this->assertEquals("success", $r);
+            $this->final = true;
         });
-        $p->fails(function($err) use ($self) {
-            $self->assertTrue(false, "must not reach fails()");
+        $p->fails(function($err)  {
+            $this->assertTrue(false, "must not reach fails()");
         });
-        $this->assertTrue($final, "resolve immediately final");
+        $this->assertTrue($this->final, "resolve immediately final");
     }
 
     public function testResolveLate() {
-        $self = $this;
         $resolve;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f) use (&$resolve){
             $resolve = $s;
         });
-        $p->then(function ($r) use ($self, &$final) {
-            $self->assertEquals("success", $r);
-            $final = true;
+        $p->then(function ($r) {
+            $this->assertEquals("success", $r);
+            $this->final = true;
         });
-        $p->fails(function($err) use ($self) {
-            $self->assertTrue(false, "must not reach fails()");
+        $p->fails(function($err) {
+            $this->assertTrue(false, "must not reach fails()");
         });
 
         call_user_func($resolve, "success");
-        $this->assertTrue($final, "resolve late final");
+        $this->assertTrue($this->final, "resolve late final");
     }
 
     public function testChainedSteps() {
-        $self = $this;
         $resolve;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f) use (&$resolve){
             $resolve = $s;
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertEquals("success", $r);
+        $p->then(function ($r) {
+            $this->assertEquals("success", $r);
             return "$r 2";
         });
-        $p->then(function ($r) use ($self, &$final) {
-            $self->assertEquals("success 2", $r);
-            $final = true;
+        $p->then(function ($r) {
+            $this->assertEquals("success 2", $r);
+            $this->final = true;
         });
-        $p->fails(function($err) use ($self) {
-            $self->assertTrue(false, "must not reach fails()");
+        $p->fails(function($err) {
+            $this->assertTrue(false, "must not reach fails()");
         });
 
         call_user_func($resolve, "success");
-        $this->assertTrue($final, "resolve chained steps final");
+        $this->assertTrue($this->final, "resolve chained steps final");
     }
 
     public function testChainedStepsEmpty() {
-        $self = $this;
         $resolve;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f) use (&$resolve){
             $resolve = $s;
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertEquals("success", $r);
+        $p->then(function ($r) {
+            $this->assertEquals("success", $r);
             return "$r 2";
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertEquals("success 2", $r);
+        $p->then(function ($r) {
+            $this->assertEquals("success 2", $r);
         });
-        $p->then(function($r) use ($self, &$final) {
-            $self->assertNull($r, "");
-            $final = true;
+        $p->then(function($r)  {
+            $this->assertNull($r, "");
+            $this->final = true;
         });
-        $p->fails(function($err) use ($self) {
-            $self->assertTrue(false, "must not reach fails()");
+        $p->fails(function($err) {
+            $this->assertTrue(false, "must not reach fails()");
         });
 
         call_user_func($resolve, "success");
-        $this->assertTrue($final, "resolve chained steps empty final");
+        $this->assertTrue($this->final, "resolve chained steps empty final");
     }
 
     public function testChainedCascade() {
-        $self = $this;
         $resolve;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f) use (&$resolve){
             $resolve = $s;
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertEquals("success", $r);
+        $p->then(function ($r) {
+            $this->assertEquals("success", $r);
             return "$r 2";
         })
-        ->then(function ($r) use ($self, &$final) {
-            $self->assertEquals("success 2", $r);
-            $final = true;
+        ->then(function ($r) {
+            $this->assertEquals("success 2", $r);
+            $this->final = true;
         })
-        ->fails(function($err) use ($self) {
-            $self->assertTrue(false, "must not reach fails()");
+        ->fails(function($err) {
+            $this->assertTrue(false, "must not reach fails()");
         });
 
         call_user_func($resolve, "success");
-        $this->assertTrue($final, "resolve chained cascade final");
+        $this->assertTrue($this->final, "resolve chained cascade final");
     }
 
     public function testChainedDefered() {
-        $self = $this;
         $resolve;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f) use (&$resolve){
             $resolve = $s;
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertEquals("success", $r);
+        $p->then(function ($r)  {
+            $this->assertEquals("success", $r);
             return "$r 1";
         });
-        $p->then(function ($r) use ($self) {
-            $self->assertEquals("success 1", $r);
+        $p->then(function ($r) {
+            $this->assertEquals("success 1", $r);
             return "$r 2";
         });
-        $p->fails(function($err) use ($self, &$final) {
-            $final = false;
+        $p->fails(function($err){
+            $this->final = false;
         });
 
         call_user_func($resolve, "success");
 
-        $p->then(function ($r) use ($self, &$final) {
-            $self->assertEquals("success 1 2", $r);
-            $final = true;
+        $p->then(function ($r) {
+            $this->assertEquals("success 1 2", $r);
+            $this->final = true;
         });
 
-        $this->assertTrue($final, "defered chain element called");
+        $this->assertTrue($this->final, "defered chain element called");
     }
 
     public function testModelHandlerOk() {
@@ -275,22 +265,21 @@ class PromiseTest extends TestCase {
     }
 
     public function testChainFail() {
-        $self = $this;
-        $final = false;
+        $this->final = false;
         $p = new Promise( function($s,$f){
             call_user_func($s, "success");
         });
-        $p->then(function ($r) use ($self, &$final) {
+        $p->then(function ($r) {
             throw new Exception("failed chain");
         });
-        $p->then(function ($r) use ($self, &$final) {
-            // $self->assertTrue(false, "success");
-            $final = false;
+        $p->then(function ($r) {
+            // $this->assertTrue(false, "success");
+            $this->final = false;
         });
-        $p->fails(function($err) use ($self, &$final) {
-            $final = true;
+        $p->fails(function($err){
+            $this->final = true;
         });
-        $this->assertTrue($final, "resolve immediately final");
+        $this->assertTrue($this->final, "resolve immediately final");
     }
 }
 
