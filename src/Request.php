@@ -154,7 +154,7 @@ class Request {
         $this->basicCredentials[$username] = $password;
     }
 
-    private function prepareUri($data="") {
+    private function prepareUri($data=[]) {
         $this->path_info = ltrim($this->path_info, "/");
         $this->next_url  = $this->protocol . "://" . $this->host;
         if (!empty($this->port)) {
@@ -254,23 +254,32 @@ class Request {
 
     private function prepareQueryString($data) {
         $qs = "";
-        $aQ = array();
+        $aQ = [];
 
-        if (!empty($data) && is_array($data)) {
-            foreach ($data as $k => $v) {
-                $aQ[] = urlencode($k) . "=" . urlencode($v);
+        if (!empty($data)) {
+
+            if (is_string($data)) {
+                $aQ = [$data];
+            }
+            elseif (is_array($data)) {
+                $aQ = array_map(function ($k) use ($data){
+                    return join("=", [urlencode($k), urlencode($data[$k])]);
+                }, array_keys($data));
             }
         }
-        if (!empty($this->param) && is_array($this->param)) {
-            foreach ($this->param as $k => $v) {
-                $aQ[] = urlencode($k) . "=" . urlencode($v);
+        if (!empty($this->param)) {
+            if (is_array($this->param)) {
+                $aQ = array_merge($aQ,array_map(function ($k){
+                    return join("=", [urlencode($k), urlencode($this->param[$k])]);
+                }, array_keys($this->param)));
+            }
+            elseif (is_string($this->param)) {
+                $aQ = array_merge($aQ,[urlencode($this->param)]);
             }
         }
+
         if (!empty($aQ)) {
-            $qs = implode("&",$aQ);
-            if (!empty($qs)) {
-                $qs = "?$qs";
-            }
+            $qs = "?".implode("&", $aQ);
         }
 
         return $qs;
