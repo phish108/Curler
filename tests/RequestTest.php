@@ -172,7 +172,7 @@ class RequestTest extends TestCase {
              ->then(function($res) {
                  $this->assertTrue(false);
              })
-             ->forbidden(function($res) {
+             ->unauthorized(function($res) {
                  $this->assertTrue($res instanceof Request);
                  $this->assertEquals($res->getStatus(), 401);
                  $this->final = true;
@@ -192,11 +192,39 @@ class RequestTest extends TestCase {
     public function testCreatedSpecial() {
         $this->assertTrue(false);
     }
-    public function testNoContentSpecial() {
-        $this->assertTrue(false);
-    }
     public function testNoContentOk() {
-        $this->assertTrue(false);
+        $this->final = false;
+        $curl = new Request("http://www.htwchur.ch/nocontent");
+        $curl->get()
+             ->then(function($res) {
+                 $this->assertTrue($res instanceof Request);
+                 $this->assertTrue(empty($res->getBody()));
+                 $this->final = true;
+             })
+             ->fails(function($err) {
+                 $this->final = false;
+                 $this->assertTrue(false, "must not reach");
+             });
+        $this->assertTrue($this->final);
+    }
+    public function testNoContentSpecial() {
+        $this->final = false;
+        $curl = new Request("https://mdl-tst.htwchur.ch/nocontent");
+        $curl->ignoreEmptyResponses();
+        $curl->get()
+             ->then(function($res) {
+                 $this->assertTrue(false);
+             })
+             ->noContent(function($res) {
+                 $this->assertTrue($res instanceof Request);
+                 $this->assertEquals($res->getStatus(), 204);
+                 $this->final = true;
+             })
+             ->fails(function($err) {
+                 $this->final = false;
+                 $this->assertTrue(false, "must not reach");
+             });
+        $this->assertTrue($this->final);
     }
     public function testNotAcceptableSpecial() {
         $this->assertTrue(false);
