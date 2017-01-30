@@ -9,5 +9,13 @@
         "psr-4": {
             "Curler\\":  "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Curler\\Test\\":  "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^5.0"
     }
 }

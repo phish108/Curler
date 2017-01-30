@@ -2,6 +2,7 @@
 
 namespace Curler;
 
+use \Exception;
 /**
  * Implmentation of Javascript Promises
  * It also handles selected  HTTP status codes, so it allows
@@ -33,7 +34,12 @@ class Promise {
         $resolve = function($res) use ($self) {$self->resolve($res);};
         $reject  = function($res) use ($self) {$self->reject($res);};
 
-        call_user_func($resolver, $resolve, $reject);
+        try {
+            call_user_func($resolver, $resolve, $reject);
+        }
+        catch (Exception $err) {
+            $this->reject($err);
+        }
     }
 
     /**
@@ -87,7 +93,7 @@ class Promise {
                     $this->lastResult = $this->fullfill($callback, "resolved", $this->lastResult);
                 }
                 catch (Exception $err) {
-                    $this->reject($err->getMessage());
+                    $this->reject($err);
                 }
             }
         }
@@ -124,7 +130,7 @@ class Promise {
                     $this->lastError = $this->fullfill($callback, "failed", $this->lastError);
                 }
                 catch (Exception $err) {
-                    $this->lastError = $err->getMessage();
+                    $this->lastError = $err;
                 }
             }
         }
@@ -221,7 +227,7 @@ class Promise {
                 $this->lastResult = $this->fullfill(current($this->ok), "resolved", $this->lastResult);
             }
             catch (Exception $err) {
-                $this->reject($err->getMessage());
+                $this->reject($err);
                 $this->lastResult = null;
             }
             if (next($this->ok)) {
@@ -251,7 +257,7 @@ class Promise {
                 $this->lastError = $this->fullfill(current($this->error), "failed", $this->lastError);
             }
             catch (Exception $err) {
-                $this->lastError = $err->getMessage();
+                $this->lastError = $err;
             }
 
             if (next($this->error) && $this->lastError) {
